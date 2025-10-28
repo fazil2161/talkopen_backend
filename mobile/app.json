@@ -54,9 +54,8 @@
         "expo-build-properties",
         {
           "android": {
-            "kotlinVersion": "1.9.24",
-            "usesCleartextTraffic": true,
-            "kotlinJvmTargetVersion": "17"
+            "kotlinVersion": "1.8.22",
+            "usesCleartextTraffic": true
           },
           "ios": {}
         }
