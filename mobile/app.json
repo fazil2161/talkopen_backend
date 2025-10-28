@@ -55,7 +55,8 @@
         {
           "android": {
             "kotlinVersion": "1.9.24",
-            "usesCleartextTraffic": true
+            "usesCleartextTraffic": true,
+            "kotlinJvmTargetVersion": "17"
           },
           "ios": {}
         }
