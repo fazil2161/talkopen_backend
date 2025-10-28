@@ -49,16 +49,6 @@
         {
           "microphonePermission": "Allow Open Talk to access your microphone for voice calls."
         }
-      ],
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "kotlinVersion": "1.8.22",
-            "usesCleartextTraffic": true
-          },
-          "ios": {}
-        }
       ]
     ],
     "extra": {
