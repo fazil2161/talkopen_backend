@@ -3,7 +3,7 @@
 // For Physical Device, use your computer's IP address (e.g., 192.168.1.100)
 // To find your IP: Windows (ipconfig) | Mac/Linux (ifconfig)
 
-const SERVER_IP = '192.168.1.4'; // Change this to your IP address
+const SERVER_IP = '192.168.1.9'; // Change this to your IP address
 
 export const API_URL = `http://${SERVER_IP}:5000/api`;
 export const SOCKET_URL = `http://${SERVER_IP}:5000`;
