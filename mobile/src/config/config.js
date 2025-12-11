@@ -1,12 +1,11 @@
-// IMPORTANT: Update these URLs before running the app
-// For Android Emulator, use 10.0.2.2 instead of localhost
-// For Physical Device, use your computer's IP address (e.g., 192.168.1.100)
-// To find your IP: Windows (ipconfig) | Mac/Linux (ifconfig)
+// PRODUCTION CONFIGURATION
+// Backend deployed on Render - works worldwide!
 
-const SERVER_IP = '192.168.1.6'; // Change this to your IP address
+// IMPORTANT: After deploying to Render, replace this URL with your actual Render URL
+const BACKEND_URL = 'https://opentalk-backend.onrender.com'; // ← Replace with YOUR Render URL
 
-export const API_URL = `http://${SERVER_IP}:5000/api`;
-export const SOCKET_URL = `http://${SERVER_IP}:5000`;
+export const API_URL = `${BACKEND_URL}/api`;
+export const SOCKET_URL = BACKEND_URL;
 
 // Razorpay key (Get from https://dashboard.razorpay.com/app/keys)
 // Use test key for development: rzp_test_...
