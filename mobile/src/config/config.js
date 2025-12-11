@@ -2,7 +2,7 @@
 // Backend deployed on Render - works worldwide!
 
 // IMPORTANT: After deploying to Render, replace this URL with your actual Render URL
-const BACKEND_URL = 'https://opentalk-backend.onrender.com'; // ← Replace with YOUR Render URL
+const BACKEND_URL = 'https://talkopen-backend.onrender.com'; // ← Replace with YOUR Render URL
 
 export const API_URL = `${BACKEND_URL}/api`;
 export const SOCKET_URL = BACKEND_URL;
