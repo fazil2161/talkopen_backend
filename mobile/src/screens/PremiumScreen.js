@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import RazorpayCheckout from 'react-native-razorpay';
+// TEMP: Razorpay removed for initial APK build - will add back later
+// import RazorpayCheckout from 'react-native-razorpay';
 import { useAuth } from '../context/AuthContext';
 import { paymentAPI } from '../services/api';
 import { RAZORPAY_KEY, PREMIUM_PRICE } from '../config/config';
@@ -38,6 +39,14 @@ const PremiumScreen = ({ navigation }) => {
   };
 
   const handlePurchasePremium = async () => {
+    // TEMP: Payment temporarily disabled - will add Razorpay back in next update
+    Alert.alert(
+      'Coming Soon! 🚀',
+      'Premium features and payment integration will be available in the next update. Stay tuned!',
+      [{ text: 'OK' }]
+    );
+    
+    /* Original Razorpay payment code - will re-enable later
     setLoading(true);
 
     try {
@@ -48,7 +57,7 @@ const PremiumScreen = ({ navigation }) => {
       // Razorpay options
       const options = {
         description: 'Open Talk Premium Subscription',
-        image: 'https://your-logo-url.com/logo.png', // Add your logo URL
+        image: 'https://your-logo-url.com/logo.png',
         currency: order.currency,
         key: RAZORPAY_KEY,
         amount: order.amount,
@@ -73,7 +82,6 @@ const PremiumScreen = ({ navigation }) => {
             });
 
             if (verifyResponse.data.success) {
-              // Update user
               await updateUser(verifyResponse.data.user);
               
               Alert.alert(
@@ -98,6 +106,7 @@ const PremiumScreen = ({ navigation }) => {
       Alert.alert('Error', 'Failed to initiate payment');
       console.error('Error creating order:', error);
     }
+    */
   };
 
   if (checkingStatus) {
