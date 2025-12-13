@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { RTCPeerConnection, RTCSessionDescription, RTCIceCandidate, mediaDevices } from 'react-native-webrtc';
+import { Audio } from 'expo-av';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import { followAPI, streakAPI } from '../services/api';
@@ -22,6 +23,7 @@ const configuration = {
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
   ],
+  iceCandidatePoolSize: 10,
 };
 
 const CallScreen = ({ navigation, route }) => {
@@ -32,6 +34,7 @@ const CallScreen = ({ navigation, route }) => {
   const [callDuration, setCallDuration] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
+  const [isSpeakerOn, setIsSpeakerOn] = useState(true); // Speaker on by default for audio calls
   const [canFollow, setCanFollow] = useState(false);
   const [audioConnected, setAudioConnected] = useState(false);
   
@@ -41,6 +44,14 @@ const CallScreen = ({ navigation, route }) => {
   const localStream = useRef(null);
 
   useEffect(() => {
+    // Hide tab bar when entering call screen
+    navigation.setOptions({
+      tabBarStyle: { display: 'none' }
+    });
+
+    // Initialize audio mode for call
+    setupAudioMode();
+
     // Initialize WebRTC
     setupWebRTC();
 
@@ -62,12 +73,51 @@ const CallScreen = ({ navigation, route }) => {
     });
 
     return () => {
+      // Restore tab bar when leaving call screen
+      navigation.setOptions({
+        tabBarStyle: undefined
+      });
+      
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
+      
+      // Reset audio mode
+      resetAudioMode();
+      
       cleanupWebRTC();
     };
   }, []);
+
+  // Setup audio mode for voice call
+  const setupAudioMode = async () => {
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false, // Use speaker by default
+      });
+      console.log('✅ Audio mode configured');
+    } catch (error) {
+      console.error('❌ Error setting audio mode:', error);
+    }
+  };
+
+  // Reset audio mode after call
+  const resetAudioMode = async () => {
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: false,
+        staysActiveInBackground: false,
+      });
+      console.log('✅ Audio mode reset');
+    } catch (error) {
+      console.error('❌ Error resetting audio mode:', error);
+    }
+  };
 
   useEffect(() => {
     if (socket) {
@@ -91,27 +141,37 @@ const CallScreen = ({ navigation, route }) => {
     try {
       console.log('🎙️ Setting up WebRTC audio...');
       
-      // Get microphone permission and audio stream
+      // Get microphone permission and audio stream with enhanced audio constraints
       const stream = await mediaDevices.getUserMedia({
-        audio: true,
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
         video: false,
       });
       
       localStream.current = stream;
       console.log('✅ Microphone access granted');
+      console.log('🎵 Audio tracks:', stream.getAudioTracks().length);
       
       // Create peer connection
       peerConnection.current = new RTCPeerConnection(configuration);
       
       // Add local stream to peer connection
       stream.getTracks().forEach(track => {
+        console.log('➕ Adding track:', track.kind, 'enabled:', track.enabled);
         peerConnection.current.addTrack(track, stream);
       });
       
       // Handle remote stream
       peerConnection.current.ontrack = (event) => {
+        console.log('📥 Received remote track:', event.track.kind);
         if (event.streams && event.streams[0]) {
           console.log('✅ Remote audio stream received');
+          console.log('🎵 Remote audio tracks:', event.streams[0].getAudioTracks().length);
+          
+          // The audio will play automatically through the device speaker
           setAudioConnected(true);
         }
       };
@@ -119,6 +179,7 @@ const CallScreen = ({ navigation, route }) => {
       // Handle ICE candidates
       peerConnection.current.onicecandidate = (event) => {
         if (event.candidate) {
+          console.log('🧊 Sending ICE candidate');
           socket.emit('ice_candidate', {
             to: matchedUser.userId,
             candidate: event.candidate,
@@ -128,14 +189,26 @@ const CallScreen = ({ navigation, route }) => {
       
       // Handle connection state
       peerConnection.current.onconnectionstatechange = () => {
-        console.log('Connection state:', peerConnection.current.connectionState);
+        console.log('🔗 Connection state:', peerConnection.current.connectionState);
         if (peerConnection.current.connectionState === 'connected') {
+          console.log('✅ Peer connection established!');
           setAudioConnected(true);
+        } else if (peerConnection.current.connectionState === 'failed') {
+          console.error('❌ Connection failed');
+          Alert.alert('Connection Error', 'Call connection failed. Please try again.');
         }
       };
       
+      // Handle ICE connection state
+      peerConnection.current.oniceconnectionstatechange = () => {
+        console.log('🧊 ICE connection state:', peerConnection.current.iceConnectionState);
+      };
+      
       // Create and send offer
-      const offer = await peerConnection.current.createOffer();
+      const offer = await peerConnection.current.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: false,
+      });
       await peerConnection.current.setLocalDescription(offer);
       
       socket.emit('call_user', {
@@ -153,9 +226,13 @@ const CallScreen = ({ navigation, route }) => {
 
   const handleIncomingCall = async ({ from, offer }) => {
     try {
+      console.log('📞 Handling incoming call from:', from);
       await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offer));
       
-      const answer = await peerConnection.current.createAnswer();
+      const answer = await peerConnection.current.createAnswer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: false,
+      });
       await peerConnection.current.setLocalDescription(answer);
       
       socket.emit('answer_call', {
@@ -288,9 +365,28 @@ const CallScreen = ({ navigation, route }) => {
     }
   };
 
+  const toggleSpeaker = async () => {
+    try {
+      const newSpeakerState = !isSpeakerOn;
+      
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: !newSpeakerState, // true = earpiece, false = speaker
+      });
+      
+      setIsSpeakerOn(newSpeakerState);
+      console.log(`🔊 Speaker ${newSpeakerState ? 'ON (Loudspeaker)' : 'OFF (Earpiece)'}`);
+    } catch (error) {
+      console.error('❌ Error toggling speaker:', error);
+    }
+  };
+
   const toggleVideo = () => {
     setIsVideoOff(!isVideoOff);
-    // Implement actual video toggle with WebRTC
+    // Video is not implemented for audio-only calls
   };
 
   return (
@@ -345,13 +441,13 @@ const CallScreen = ({ navigation, route }) => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.controlButton, isVideoOff && styles.controlButtonActive]}
-          onPress={toggleVideo}
+          style={[styles.controlButton, !isSpeakerOn && styles.controlButtonActive]}
+          onPress={toggleSpeaker}
         >
           <Ionicons
-            name={isVideoOff ? 'videocam-off' : 'videocam'}
+            name={isSpeakerOn ? 'volume-high' : 'volume-mute'}
             size={28}
-            color={isVideoOff ? '#ef4444' : '#fff'}
+            color={!isSpeakerOn ? '#ef4444' : '#fff'}
           />
         </TouchableOpacity>
 
@@ -370,19 +466,6 @@ const CallScreen = ({ navigation, route }) => {
         >
           <Ionicons name="call" size={28} color="#fff" />
         </TouchableOpacity>
-      </View>
-
-      {/* User Info */}
-      <View style={styles.userInfoContainer}>
-        <View style={styles.userInfoCard}>
-          <Ionicons name="person-circle" size={48} color="#6366f1" />
-          <View style={styles.userInfoText}>
-            <Text style={styles.userName}>{matchedUser.username}</Text>
-            <Text style={styles.userGender}>
-              {matchedUser.gender} • {matchedUser.age || 'Unknown'} years
-            </Text>
-          </View>
-        </View>
       </View>
     </View>
   );
@@ -507,32 +590,6 @@ const styles = StyleSheet.create({
   endCallButton: {
     backgroundColor: 'rgba(239, 68, 68, 0.9)',
     transform: [{ rotate: '135deg' }],
-  },
-  userInfoContainer: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
-  },
-  userInfoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    padding: 15,
-    borderRadius: 15,
-  },
-  userInfoText: {
-    marginLeft: 15,
-  },
-  userName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1f2937',
-  },
-  userGender: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 2,
   },
 });
 
