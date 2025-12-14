@@ -7,6 +7,7 @@ import {
   Alert,
   Dimensions,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { RTCPeerConnection, RTCSessionDescription, RTCIceCandidate, mediaDevices } from 'react-native-webrtc';
@@ -38,12 +39,30 @@ const CallScreen = ({ navigation, route }) => {
   const [canFollow, setCanFollow] = useState(false);
   const [audioConnected, setAudioConnected] = useState(false);
   
+  // Debug status states
+  const [debugMessages, setDebugMessages] = useState([]);
+  const [showDebug, setShowDebug] = useState(true); // Always show debug initially
+  
   const timerRef = useRef(null);
   const startTimeRef = useRef(Date.now());
   const peerConnection = useRef(null);
   const localStream = useRef(null);
 
+  // Helper to add debug messages
+  const addDebug = (message, type = 'info') => {
+    const timestamp = new Date().toLocaleTimeString();
+    const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️';
+    setDebugMessages(prev => [...prev, { timestamp, message, type, icon }]);
+    console.log(`[${timestamp}] ${icon} ${message}`);
+  };
+
   useEffect(() => {
+    // Log initial setup
+    addDebug(`📱 CallScreen mounted`, 'info');
+    addDebug(`👤 My role: ${isInitiator ? 'INITIATOR (create offer)' : 'RECEIVER (wait for offer)'}`, 'info');
+    addDebug(`🎯 Matched with: ${matchedUser.username}`, 'info');
+    addDebug(`📞 Call ID: ${callId}`, 'info');
+    
     // Hide tab bar when entering call screen
     navigation.setOptions({
       tabBarStyle: { display: 'none' }
@@ -67,6 +86,7 @@ const CallScreen = ({ navigation, route }) => {
     }, 1000);
 
     // Notify server that call started
+    addDebug('📡 Notifying server: call_started', 'info');
     socket.emit('call_started', {
       callId,
       participants: [user.id, matchedUser.userId],
@@ -92,6 +112,7 @@ const CallScreen = ({ navigation, route }) => {
   // Setup audio mode for voice call
   const setupAudioMode = async () => {
     try {
+      addDebug('🔊 Configuring audio mode...', 'info');
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
@@ -99,8 +120,9 @@ const CallScreen = ({ navigation, route }) => {
         shouldDuckAndroid: true,
         playThroughEarpieceAndroid: false, // Use speaker by default
       });
-      console.log('✅ Audio mode configured');
+      addDebug('✅ Audio mode configured (speaker ON)', 'success');
     } catch (error) {
+      addDebug(`❌ Audio mode error: ${error.message}`, 'error');
       console.error('❌ Error setting audio mode:', error);
     }
   };
@@ -139,10 +161,10 @@ const CallScreen = ({ navigation, route }) => {
   // WebRTC Setup
   const setupWebRTC = async () => {
     try {
-      console.log('🎙️ Setting up WebRTC audio...');
-      console.log(`👤 Role: ${isInitiator ? 'INITIATOR (will create offer)' : 'RECEIVER (will wait for offer)'}`);
+      addDebug('🎙️ Starting WebRTC setup...', 'info');
       
       // Get microphone permission and audio stream with enhanced audio constraints
+      addDebug('🎤 Requesting microphone permission...', 'info');
       const stream = await mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -153,26 +175,25 @@ const CallScreen = ({ navigation, route }) => {
       });
       
       localStream.current = stream;
-      console.log('✅ Microphone access granted');
-      console.log('🎵 Audio tracks:', stream.getAudioTracks().length);
+      addDebug(`✅ Microphone granted (${stream.getAudioTracks().length} tracks)`, 'success');
       
       // Create peer connection
+      addDebug('🔗 Creating peer connection...', 'info');
       peerConnection.current = new RTCPeerConnection(configuration);
+      addDebug('✅ Peer connection created', 'success');
       
       // Add local stream to peer connection
       stream.getTracks().forEach(track => {
-        console.log('➕ Adding track:', track.kind, 'enabled:', track.enabled);
         peerConnection.current.addTrack(track, stream);
+        addDebug(`➕ Added ${track.kind} track (enabled: ${track.enabled})`, 'success');
       });
       
       // Handle remote stream
       peerConnection.current.ontrack = (event) => {
-        console.log('📥 Received remote track:', event.track.kind);
+        addDebug(`📥 Received remote ${event.track.kind} track`, 'success');
         if (event.streams && event.streams[0]) {
-          console.log('✅ Remote audio stream received');
-          console.log('🎵 Remote audio tracks:', event.streams[0].getAudioTracks().length);
-          
-          // The audio will play automatically through the device speaker
+          const audioTracks = event.streams[0].getAudioTracks().length;
+          addDebug(`✅ Remote audio stream (${audioTracks} tracks)`, 'success');
           setAudioConnected(true);
         }
       };
@@ -180,48 +201,50 @@ const CallScreen = ({ navigation, route }) => {
       // Handle ICE candidates
       peerConnection.current.onicecandidate = (event) => {
         if (event.candidate) {
-          console.log('🧊 Sending ICE candidate');
+          addDebug('🧊 Sending ICE candidate', 'info');
           socket.emit('ice_candidate', {
             to: matchedUser.userId,
             candidate: event.candidate,
           });
         } else {
-          console.log('🧊 All ICE candidates have been sent');
+          addDebug('🧊 All ICE candidates sent', 'success');
         }
       };
       
       // Handle connection state
       peerConnection.current.onconnectionstatechange = () => {
-        console.log('🔗 Connection state:', peerConnection.current.connectionState);
-        if (peerConnection.current.connectionState === 'connected') {
-          console.log('✅ Peer connection established!');
+        const state = peerConnection.current.connectionState;
+        addDebug(`🔗 Connection: ${state}`, state === 'connected' ? 'success' : state === 'failed' ? 'error' : 'info');
+        
+        if (state === 'connected') {
           setAudioConnected(true);
-        } else if (peerConnection.current.connectionState === 'failed') {
-          console.error('❌ Connection failed');
+        } else if (state === 'failed') {
+          addDebug('❌ CALL FAILED - Connection could not be established', 'error');
           Alert.alert('Connection Error', 'Call connection failed. Please try again.');
-        } else if (peerConnection.current.connectionState === 'disconnected') {
-          console.warn('⚠️ Connection disconnected');
+        } else if (state === 'disconnected') {
+          addDebug('⚠️ Connection disconnected', 'warning');
         }
       };
       
       // Handle ICE connection state
       peerConnection.current.oniceconnectionstatechange = () => {
-        console.log('🧊 ICE connection state:', peerConnection.current.iceConnectionState);
-        if (peerConnection.current.iceConnectionState === 'failed') {
-          console.error('❌ ICE connection failed');
-          // Try ICE restart
-          console.log('🔄 Attempting ICE restart...');
+        const iceState = peerConnection.current.iceConnectionState;
+        addDebug(`🧊 ICE: ${iceState}`, iceState === 'connected' || iceState === 'completed' ? 'success' : iceState === 'failed' ? 'error' : 'info');
+        
+        if (iceState === 'failed') {
+          addDebug('❌ ICE FAILED - Network issue or firewall blocking', 'error');
         }
       };
       
       // Only the initiator creates and sends the offer
       if (isInitiator) {
-        console.log('📤 Creating and sending offer...');
+        addDebug('📤 INITIATOR: Creating offer...', 'info');
         const offer = await peerConnection.current.createOffer({
           offerToReceiveAudio: true,
           offerToReceiveVideo: false,
         });
         await peerConnection.current.setLocalDescription(offer);
+        addDebug('✅ Offer created, sending to peer...', 'success');
         
         socket.emit('call_user', {
           to: matchedUser.userId,
@@ -229,11 +252,13 @@ const CallScreen = ({ navigation, route }) => {
           callId: callId,
         });
         
-        console.log('✅ Offer sent to', matchedUser.username);
+        addDebug(`✅ Offer sent to ${matchedUser.username}`, 'success');
+        addDebug('⏳ Waiting for answer...', 'info');
       } else {
-        console.log('⏳ Waiting for incoming call offer...');
+        addDebug('📥 RECEIVER: Waiting for offer...', 'info');
       }
     } catch (error) {
+      addDebug(`❌ WebRTC SETUP FAILED: ${error.message}`, 'error');
       console.error('❌ WebRTC setup error:', error);
       Alert.alert('Microphone Error', 'Could not access microphone. Please check permissions in Settings.');
     }
@@ -241,14 +266,18 @@ const CallScreen = ({ navigation, route }) => {
 
   const handleIncomingCall = async ({ from, offer }) => {
     try {
-      console.log('📞 Handling incoming call from:', from);
+      addDebug('📞 Received OFFER from peer', 'success');
+      addDebug('🔄 Setting remote description...', 'info');
       await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offer));
+      addDebug('✅ Remote description set', 'success');
       
+      addDebug('📤 Creating answer...', 'info');
       const answer = await peerConnection.current.createAnswer({
         offerToReceiveAudio: true,
         offerToReceiveVideo: false,
       });
       await peerConnection.current.setLocalDescription(answer);
+      addDebug('✅ Answer created', 'success');
       
       socket.emit('answer_call', {
         to: from,
@@ -256,17 +285,20 @@ const CallScreen = ({ navigation, route }) => {
         callId: callId,
       });
       
-      console.log('✅ Call answered');
+      addDebug('✅ Answer sent to peer', 'success');
     } catch (error) {
+      addDebug(`❌ INCOMING CALL FAILED: ${error.message}`, 'error');
       console.error('❌ Error handling incoming call:', error);
     }
   };
 
   const handleCallAnswered = async ({ from, answer }) => {
     try {
+      addDebug('📞 Received ANSWER from peer', 'success');
       await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer));
-      console.log('✅ Call answer received');
+      addDebug('✅ Answer accepted, connecting...', 'success');
     } catch (error) {
+      addDebug(`❌ ANSWER FAILED: ${error.message}`, 'error');
       console.error('❌ Error handling call answer:', error);
     }
   };
@@ -274,8 +306,9 @@ const CallScreen = ({ navigation, route }) => {
   const handleNewICECandidate = async ({ from, candidate }) => {
     try {
       await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
-      console.log('✅ ICE candidate added');
+      addDebug('🧊 ICE candidate added', 'success');
     } catch (error) {
+      addDebug(`❌ ICE CANDIDATE FAILED: ${error.message}`, 'error');
       console.error('❌ Error adding ICE candidate:', error);
     }
   };
@@ -442,6 +475,36 @@ const CallScreen = ({ navigation, route }) => {
         </View>
       </View>
 
+      {/* Debug Panel */}
+      {showDebug && (
+        <View style={styles.debugPanel}>
+          <View style={styles.debugHeader}>
+            <Text style={styles.debugHeaderText}>🔍 Call Debug Log</Text>
+            <TouchableOpacity onPress={() => setShowDebug(false)}>
+              <Ionicons name="close" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.debugScroll} nestedScrollEnabled={true}>
+            {debugMessages.map((msg, index) => (
+              <View key={index} style={[styles.debugMessage, styles[`debug${msg.type.charAt(0).toUpperCase() + msg.type.slice(1)}`]]}>
+                <Text style={styles.debugTime}>{msg.timestamp}</Text>
+                <Text style={styles.debugText}>{msg.icon} {msg.message}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* Toggle Debug Button (when hidden) */}
+      {!showDebug && (
+        <TouchableOpacity 
+          style={styles.debugToggle} 
+          onPress={() => setShowDebug(true)}
+        >
+          <Text style={styles.debugToggleText}>🔍 Show Debug</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Controls */}
       <View style={styles.controlsContainer}>
         <TouchableOpacity
@@ -605,6 +668,79 @@ const styles = StyleSheet.create({
   endCallButton: {
     backgroundColor: 'rgba(239, 68, 68, 0.9)',
     transform: [{ rotate: '135deg' }],
+  },
+  debugPanel: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    maxHeight: height * 0.4,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
+  },
+  debugHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 15,
+    backgroundColor: 'rgba(99, 102, 241, 0.9)',
+  },
+  debugHeaderText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  debugScroll: {
+    maxHeight: height * 0.3,
+    padding: 10,
+  },
+  debugMessage: {
+    marginBottom: 8,
+    padding: 8,
+    borderRadius: 8,
+    borderLeftWidth: 3,
+  },
+  debugInfo: {
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    borderLeftColor: '#3b82f6',
+  },
+  debugSuccess: {
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    borderLeftColor: '#10b981',
+  },
+  debugError: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    borderLeftColor: '#ef4444',
+  },
+  debugWarning: {
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    borderLeftColor: '#f59e0b',
+  },
+  debugTime: {
+    fontSize: 10,
+    color: '#9ca3af',
+    marginBottom: 2,
+  },
+  debugText: {
+    fontSize: 12,
+    color: '#fff',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  debugToggle: {
+    position: 'absolute',
+    bottom: 180,
+    left: 20,
+    backgroundColor: 'rgba(99, 102, 241, 0.9)',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  debugToggleText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
 

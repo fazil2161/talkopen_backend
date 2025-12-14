@@ -152,6 +152,9 @@ const HomeScreen = ({ navigation }) => {
                 { backgroundColor: connected ? '#10b981' : '#ef4444' },
               ]}
             />
+            <Text style={[styles.connectionText, { color: connected ? '#10b981' : '#ef4444' }]}>
+              {connected ? '● Online' : '● Offline'}
+            </Text>
           </View>
         </View>
 
@@ -174,6 +177,27 @@ const HomeScreen = ({ navigation }) => {
           </Text>
           {renderWeeklyStreak()}
         </LinearGradient>
+
+        {/* Debug Connection Status */}
+        <View style={styles.debugCard}>
+          <Text style={styles.debugTitle}>🔧 Connection Debug</Text>
+          <View style={styles.debugRow}>
+            <Text style={styles.debugLabel}>Socket Status:</Text>
+            <Text style={[styles.debugValue, { color: connected ? '#10b981' : '#ef4444' }]}>
+              {connected ? '✅ Connected' : '❌ Disconnected'}
+            </Text>
+          </View>
+          <View style={styles.debugRow}>
+            <Text style={styles.debugLabel}>Backend:</Text>
+            <Text style={styles.debugValue}>
+              {socket ? '✅ Instance Created' : '❌ Not Created'}
+            </Text>
+          </View>
+          <View style={styles.debugRow}>
+            <Text style={styles.debugLabel}>User:</Text>
+            <Text style={styles.debugValue}>{user?.username || 'Unknown'}</Text>
+          </View>
+        </View>
 
         {/* Connect Section */}
         <View style={styles.connectSection}>
@@ -329,13 +353,48 @@ const styles = StyleSheet.create({
     color: '#1f2937',
   },
   connectionIndicator: {
-    width: 40,
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   connectionDot: {
     width: 12,
     height: 12,
     borderRadius: 6,
+  },
+  connectionText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  debugCard: {
+    margin: 20,
+    marginTop: 0,
+    padding: 15,
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  debugTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 10,
+  },
+  debugRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 5,
+  },
+  debugLabel: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  debugValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1f2937',
   },
   streakCard: {
     margin: 20,
