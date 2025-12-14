@@ -34,10 +34,12 @@ const HomeScreen = ({ navigation }) => {
       });
 
       socket.on('match_found', (data) => {
+        console.log('Match found:', data);
         setSearching(false);
         navigation.navigate('Call', {
           matchedUser: data.matchedUser,
           callId: data.callId,
+          isInitiator: data.isInitiator, // Pass the initiator flag
         });
       });
 

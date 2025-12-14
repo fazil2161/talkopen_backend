@@ -350,6 +350,7 @@ function tryMatchUsers(queueKey, io) {
   const callId = `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
   // Notify both users about the match
+  // User1 is the initiator (will create offer), User2 will wait for offer
   io.to(user1.socketId).emit('match_found', {
     matchedUser: {
       userId: user2.userId,
@@ -357,7 +358,8 @@ function tryMatchUsers(queueKey, io) {
       avatar: user2.avatar,
       gender: user2.gender
     },
-    callId
+    callId,
+    isInitiator: true // User1 creates the offer
   });
 
   io.to(user2.socketId).emit('match_found', {
@@ -367,13 +369,14 @@ function tryMatchUsers(queueKey, io) {
       avatar: user1.avatar,
       gender: user1.gender
     },
-    callId
+    callId,
+    isInitiator: false // User2 waits for the offer
   });
 
   // Update users' current match
   User.findByIdAndUpdate(user1.userId, { currentMatch: user2.userId }).catch(console.error);
   User.findByIdAndUpdate(user2.userId, { currentMatch: user1.userId }).catch(console.error);
 
-  console.log(`✅ Match found: ${user1.username} <-> ${user2.username}`);
+  console.log(`✅ Match found: ${user1.username} (initiator) <-> ${user2.username} (receiver)`);
 }
 

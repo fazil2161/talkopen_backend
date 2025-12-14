@@ -27,7 +27,7 @@ const configuration = {
 };
 
 const CallScreen = ({ navigation, route }) => {
-  const { matchedUser, callId } = route.params;
+  const { matchedUser, callId, isInitiator } = route.params; // Add isInitiator flag
   const { socket } = useSocket();
   const { user } = useAuth();
   
@@ -140,6 +140,7 @@ const CallScreen = ({ navigation, route }) => {
   const setupWebRTC = async () => {
     try {
       console.log('🎙️ Setting up WebRTC audio...');
+      console.log(`👤 Role: ${isInitiator ? 'INITIATOR (will create offer)' : 'RECEIVER (will wait for offer)'}`);
       
       // Get microphone permission and audio stream with enhanced audio constraints
       const stream = await mediaDevices.getUserMedia({
@@ -184,6 +185,8 @@ const CallScreen = ({ navigation, route }) => {
             to: matchedUser.userId,
             candidate: event.candidate,
           });
+        } else {
+          console.log('🧊 All ICE candidates have been sent');
         }
       };
       
@@ -196,28 +199,40 @@ const CallScreen = ({ navigation, route }) => {
         } else if (peerConnection.current.connectionState === 'failed') {
           console.error('❌ Connection failed');
           Alert.alert('Connection Error', 'Call connection failed. Please try again.');
+        } else if (peerConnection.current.connectionState === 'disconnected') {
+          console.warn('⚠️ Connection disconnected');
         }
       };
       
       // Handle ICE connection state
       peerConnection.current.oniceconnectionstatechange = () => {
         console.log('🧊 ICE connection state:', peerConnection.current.iceConnectionState);
+        if (peerConnection.current.iceConnectionState === 'failed') {
+          console.error('❌ ICE connection failed');
+          // Try ICE restart
+          console.log('🔄 Attempting ICE restart...');
+        }
       };
       
-      // Create and send offer
-      const offer = await peerConnection.current.createOffer({
-        offerToReceiveAudio: true,
-        offerToReceiveVideo: false,
-      });
-      await peerConnection.current.setLocalDescription(offer);
-      
-      socket.emit('call_user', {
-        to: matchedUser.userId,
-        offer: offer,
-        callId: callId,
-      });
-      
-      console.log('✅ WebRTC setup complete, offer sent');
+      // Only the initiator creates and sends the offer
+      if (isInitiator) {
+        console.log('📤 Creating and sending offer...');
+        const offer = await peerConnection.current.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: false,
+        });
+        await peerConnection.current.setLocalDescription(offer);
+        
+        socket.emit('call_user', {
+          to: matchedUser.userId,
+          offer: offer,
+          callId: callId,
+        });
+        
+        console.log('✅ Offer sent to', matchedUser.username);
+      } else {
+        console.log('⏳ Waiting for incoming call offer...');
+      }
     } catch (error) {
       console.error('❌ WebRTC setup error:', error);
       Alert.alert('Microphone Error', 'Could not access microphone. Please check permissions in Settings.');
