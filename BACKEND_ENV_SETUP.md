@@ -36,7 +36,7 @@ NODE_ENV=development
 MONGODB_URI=mongodb://localhost:27017/opentalk
 
 # JWT Authentication (change this secret key!)
-JWT_SECRET=opentalk_secret_key_12345_change_in_production
+JWT_SECRET=your_random_secret_key_change_this
 JWT_EXPIRE=30d
 
 # Razorpay Payment Gateway (get from https://dashboard.razorpay.com)
@@ -136,7 +136,7 @@ cd C:\Users\fazil\Downloads\Delta_materials\talkopen\backend
 PORT=5000
 NODE_ENV=development
 MONGODB_URI=mongodb://localhost:27017/opentalk
-JWT_SECRET=opentalk_secret_key_12345
+JWT_SECRET=your_local_dev_secret_key
 JWT_EXPIRE=30d
 RAZORPAY_KEY_ID=rzp_test_YOUR_KEY_ID
 RAZORPAY_KEY_SECRET=YOUR_SECRET_KEY

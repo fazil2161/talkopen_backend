@@ -55,11 +55,11 @@ Click "Advanced" → "Add Environment Variable" and add these:
 | Key | Value |
 |-----|-------|
 | `NODE_ENV` | `production` |
-| `MONGODB_URI` | `mongodb+srv://fazilmohammed377_db_user:giXJ6PMgBhJhNc8l@cluster0.lkeaw8q.mongodb.net/opentalk?retryWrites=true&w=majority` |
-| `JWT_SECRET` | `opentalk_secret_key_12345` |
+| `MONGODB_URI` | `mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@YOUR_CLUSTER.mongodb.net/opentalk?retryWrites=true&w=majority` |
+| `JWT_SECRET` | `your_random_secret_key_here` |
 | `JWT_EXPIRE` | `30d` |
-| `RAZORPAY_KEY_ID` | `rzp_test_dummy` |
-| `RAZORPAY_KEY_SECRET` | `dummy_secret_key_12345` |
+| `RAZORPAY_KEY_ID` | `rzp_test_YOUR_KEY` |
+| `RAZORPAY_KEY_SECRET` | `your_razorpay_secret` |
 | `PREMIUM_PRICE` | `299` |
 
 ### **2.5: Create Web Service**
