@@ -27,7 +27,7 @@
    ```
 
 2. **Navigate to:**
-   - Your cluster → Database Access → Your user (`fazilmohammed377_db_user`)
+   - Your cluster → Database Access → Your MongoDB user
 
 3. **Click "Edit"**
 
@@ -56,7 +56,7 @@
 
 6. **Update the connection string with NEW password:**
    ```
-   mongodb+srv://fazilmohammed377_db_user:NEW_PASSWORD_HERE@cluster0.lkeaw8q.mongodb.net/opentalk?retryWrites=true&w=majority
+   mongodb+srv://YOUR_USERNAME:NEW_PASSWORD@YOUR_CLUSTER.mongodb.net/opentalk?retryWrites=true&w=majority
    ```
 
 7. **Click "Save Changes"**

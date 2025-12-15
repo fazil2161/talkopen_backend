@@ -20,7 +20,7 @@ https://cloud.mongodb.com/
 ### **2.2: Login and Navigate**
 - Click on your cluster (Cluster0)
 - Left sidebar → **"Database Access"**
-- Find user: `fazilmohammed377_db_user`
+- Find your MongoDB user (e.g., `your_username_here`)
 - Click **"Edit"** button
 
 ### **2.3: Change Password**
@@ -39,7 +39,7 @@ https://dashboard.render.com
 - Click **"Edit"**
 - Update the password in the connection string:
   ```
-  mongodb+srv://fazilmohammed377_db_user:NEW_PASSWORD_HERE@cluster0.lkeaw8q.mongodb.net/opentalk?retryWrites=true&w=majority
+  mongodb+srv://YOUR_USERNAME:NEW_PASSWORD@YOUR_CLUSTER.mongodb.net/opentalk?retryWrites=true&w=majority
   ```
 - Click **"Save Changes"**
 - **Wait 2-3 minutes** for Render to redeploy
