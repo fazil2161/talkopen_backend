@@ -238,3 +238,4 @@ Time 5:45 → HEAR EACH OTHER ✅
 
 **The debug indicators will tell you EXACTLY where the problem is!** 🎯
 
+
