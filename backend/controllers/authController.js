@@ -131,3 +131,41 @@ exports.getMe = async (req, res) => {
   }
 };
 
+// @desc    Validate token
+// @route   GET /api/auth/validate
+// @access  Private
+exports.validateToken = async (req, res) => {
+  try {
+    // If we reach here, token is valid (protect middleware already validated it)
+    const user = await User.findById(req.user.id);
+    
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        valid: false,
+        message: 'User not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      valid: true,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        gender: user.gender,
+        age: user.age,
+        isPremium: user.isPremium,
+        avatar: user.avatar
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      valid: false,
+      message: error.message
+    });
+  }
+};
+

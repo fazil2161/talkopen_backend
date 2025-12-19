@@ -22,9 +22,29 @@ export const AuthProvider = ({ children }) => {
       const storedUser = await AsyncStorage.getItem('user');
 
       if (storedToken && storedUser) {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
-        axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+        // Validate token with backend
+        try {
+          axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+          const response = await axios.get(`${API_URL}/auth/validate`);
+          
+          if (response.data.valid) {
+            setToken(storedToken);
+            setUser(JSON.parse(storedUser));
+            console.log('✅ User session restored:', JSON.parse(storedUser).username);
+          } else {
+            // Token invalid, clear storage
+            console.log('⚠️ Invalid token, clearing storage');
+            await AsyncStorage.removeItem('token');
+            await AsyncStorage.removeItem('user');
+            delete axios.defaults.headers.common['Authorization'];
+          }
+        } catch (error) {
+          // Token validation failed (network error or invalid token)
+          console.log('⚠️ Token validation failed, clearing storage');
+          await AsyncStorage.removeItem('token');
+          await AsyncStorage.removeItem('user');
+          delete axios.defaults.headers.common['Authorization'];
+        }
       }
     } catch (error) {
       console.error('Error loading user:', error);
@@ -88,14 +108,25 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem('token');
-      await AsyncStorage.removeItem('user');
-
+      console.log('🔵 Logging out user...');
+      
+      // Clear AsyncStorage
+      await AsyncStorage.multiRemove(['token', 'user']);
+      
+      // Clear axios headers
+      delete axios.defaults.headers.common['Authorization'];
+      
+      // Clear state (this will trigger navigation to AuthScreen)
+      setToken(null);
+      setUser(null);
+      
+      console.log('✅ Logout successful');
+    } catch (error) {
+      console.error('❌ Error logging out:', error);
+      // Force clear even if there's an error
       setToken(null);
       setUser(null);
       delete axios.defaults.headers.common['Authorization'];
-    } catch (error) {
-      console.error('Error logging out:', error);
     }
   };
 
