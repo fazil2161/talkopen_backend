@@ -18,36 +18,49 @@ export const AuthProvider = ({ children }) => {
 
   const loadUser = async () => {
     try {
+      console.log('🔵 Checking for stored credentials...');
       const storedToken = await AsyncStorage.getItem('token');
       const storedUser = await AsyncStorage.getItem('user');
 
       if (storedToken && storedUser) {
-        // Validate token with backend
+        console.log('🔵 Found stored credentials, validating...');
+        // DO NOT set user yet - validate first!
         try {
           axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
           const response = await axios.get(`${API_URL}/auth/validate`);
           
           if (response.data.valid) {
+            // Validation successful - NOW set user
+            console.log('✅ Token valid - restoring session:', JSON.parse(storedUser).username);
             setToken(storedToken);
             setUser(JSON.parse(storedUser));
-            console.log('✅ User session restored:', JSON.parse(storedUser).username);
           } else {
-            // Token invalid, clear storage
-            console.log('⚠️ Invalid token, clearing storage');
-            await AsyncStorage.removeItem('token');
-            await AsyncStorage.removeItem('user');
+            // Token invalid - clear everything
+            console.log('⚠️ Token invalid - clearing storage');
+            await AsyncStorage.multiRemove(['token', 'user']);
             delete axios.defaults.headers.common['Authorization'];
+            setToken(null);
+            setUser(null);
           }
         } catch (error) {
-          // Token validation failed (network error or invalid token)
-          console.log('⚠️ Token validation failed, clearing storage');
-          await AsyncStorage.removeItem('token');
-          await AsyncStorage.removeItem('user');
+          // Validation failed - clear everything
+          console.log('❌ Validation failed - clearing storage:', error.message);
+          await AsyncStorage.multiRemove(['token', 'user']);
           delete axios.defaults.headers.common['Authorization'];
+          setToken(null);
+          setUser(null);
         }
+      } else {
+        console.log('🔵 No stored credentials - showing login screen');
+        // Ensure user is null
+        setToken(null);
+        setUser(null);
       }
     } catch (error) {
-      console.error('Error loading user:', error);
+      console.error('❌ Error loading user:', error);
+      // On any error, ensure clean state
+      setToken(null);
+      setUser(null);
     } finally {
       setLoading(false);
     }

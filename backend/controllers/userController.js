@@ -39,11 +39,16 @@ exports.getUserProfile = async (req, res) => {
 // @access  Private
 exports.updateProfile = async (req, res) => {
   try {
-    const { username, bio, interests, avatar } = req.body;
+    const { username, bio, interests, avatar, privacy } = req.body;
+
+    const updateData = { username, bio, interests, avatar };
+    if (privacy) {
+      updateData.privacy = privacy;
+    }
 
     const user = await User.findByIdAndUpdate(
       req.user.id,
-      { username, bio, interests, avatar },
+      updateData,
       { new: true, runValidators: true }
     );
 
@@ -197,6 +202,110 @@ exports.getOnlineUsers = async (req, res) => {
       success: true,
       count: users.length,
       users
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// @desc    Change password
+// @route   PUT /api/users/change-password
+// @access  Private
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide current and new password'
+      });
+    }
+
+    // Get user with password field
+    const user = await User.findById(req.user.id).select('+password');
+
+    // Check current password
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Current password is incorrect'
+      });
+    }
+
+    // Update password
+    user.password = newPassword;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Password changed successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// @desc    Unblock user
+// @route   POST /api/users/unblock
+// @access  Private
+exports.unblockUser = async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    const user = await User.findById(req.user.id);
+
+    if (!user.blockedUsers.includes(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'User is not blocked'
+      });
+    }
+
+    user.blockedUsers = user.blockedUsers.filter(
+      (id) => id.toString() !== userId
+    );
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'User unblocked successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// @desc    Get blocked users
+// @route   GET /api/users/blocked-users
+// @access  Private
+exports.getBlockedUsers = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).populate(
+      'blockedUsers',
+      'username avatar'
+    );
+
+    const blockedUsers = user.blockedUsers.map((blockedUser) => ({
+      _id: blockedUser._id,
+      username: blockedUser.username,
+      avatar: blockedUser.avatar,
+      blockedAt: user.updatedAt, // approximate date
+    }));
+
+    res.status(200).json({
+      success: true,
+      blockedUsers
     });
   } catch (error) {
     res.status(500).json({

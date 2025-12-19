@@ -104,19 +104,28 @@ const SettingsScreen = ({ navigation }) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('ChangePassword')}
+          >
             <Ionicons name="key" size={24} color="#6b7280" />
             <Text style={styles.menuItemText}>Change Password</Text>
             <Ionicons name="chevron-forward" size={24} color="#d1d5db" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('PrivacySettings')}
+          >
             <Ionicons name="shield-checkmark" size={24} color="#6b7280" />
             <Text style={styles.menuItemText}>Privacy Settings</Text>
             <Ionicons name="chevron-forward" size={24} color="#d1d5db" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('BlockedUsers')}
+          >
             <Ionicons name="ban" size={24} color="#6b7280" />
             <Text style={styles.menuItemText}>Blocked Users</Text>
             <Ionicons name="chevron-forward" size={24} color="#d1d5db" />
